@@ -164,6 +164,31 @@ MIT
 
 ---
 
+---
+
+## 效果预览
+
+一个**可以直接点的静态演示页**（虚构数据 + 本地生成的示例视频，不涉及任何真实内容）：
+
+```
+demo/index.html
+```
+
+直接双击打开，或用任意静态服务器：
+
+```bash
+python3 -m http.server -d demo 8000   # 然后访问 http://localhost:8000
+```
+
+演示页里可以试：按年份/月份筛选、四种排序、搜索、点击卡片播放。
+
+![画廊界面](docs/images/demo-gallery.png)
+
+![点击播放](docs/images/demo-play.png)
+
+> 真实版本需要本地跑 `node scripts/gallery_server.mjs`，因为抖音的播放直链有时效，
+> 必须按需实时换取（详见 `skill/douyin-likes/SKILL.md`）。
+
 ## 作为 Skill 使用
 
 仓库里的 `skill/douyin-likes/` 是一个可直接安装的 agent skill（DSH / Claude 等支持 skill 的环境）：
