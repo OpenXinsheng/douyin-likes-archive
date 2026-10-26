@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>点赞视频画廊</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0d1117;color:#e6edf3;font-family:system-ui,"Noto Sans CJK SC",sans-serif}
+header{position:sticky;top:0;z-index:30;background:#161b22;border-bottom:1px solid #21262d;padding:10px 16px}
+h1{font-size:15px;margin:0 0 8px;font-weight:600}
+h1 span{color:#8b949e;font-weight:400;font-size:12px;margin-left:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=search]{background:#0d1117;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;flex:1;min-width:180px;max-width:320px}
+select{background:#0d1117;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 8px;font-size:12.5px}
+#cnt{color:#8b949e;font-size:12px;margin-left:auto;white-space:nowrap}
+.tabs{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.tab{background:#0d1117;border:1px solid #30363d;color:#8b949e;border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none}
+.tab.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;padding:14px 16px 60px}
+.card{background:#161b22;border:1px solid #21262d;border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:#1f6feb}
+.thumb{position:relative;aspect-ratio:9/14;background:#0b0d11;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;color:#8b949e99;font-size:12px;text-align:center;padding:12px;line-height:1.5}
+.ph::before{content:"▶";font-size:26px;color:#ffffff22}
+.ph.b{background:linear-gradient(135deg,#1b2230,#12161d)}
+.dur{position:absolute;right:6px;bottom:6px;background:#000c;padding:1px 6px;border-radius:4px;font-size:11px}
+.badge{position:absolute;left:6px;top:6px;background:#d29922dd;color:#1a1207;font-size:10.5px;padding:1px 5px;border-radius:4px;font-weight:600}
+.meta{padding:8px 10px 10px}
+.t{font-size:12.5px;line-height:1.4;height:36px;overflow:hidden}
+.s{font-size:11px;color:#8b949e;margin-top:4px;display:flex;justify-content:space-between;gap:6px}
+.s b{color:#d2a8ff;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#more{display:block;margin:0 auto 40px;padding:10px 26px;background:#1f6feb22;border:1px solid #1f6feb66;color:#58a6ff;border-radius:8px;font-size:13px;cursor:pointer}
+#more:hover{background:#1f6feb33}
+/* 播放器 */
+#modal{position:fixed;inset:0;background:#000d;display:none;z-index:50;align-items:center;justify-content:center;padding:20px}
+#modal.on{display:flex}
+.player{background:#161b22;border:1px solid #30363d;border-radius:12px;max-width:min(520px,96vw);width:100%;overflow:hidden}
+.phead{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:13px;border-bottom:1px solid #21262d;gap:10px}
+.phead a{color:#8b949e;text-decoration:none;font-size:12px}
+.pclose{cursor:pointer;color:#8b949e;font-size:18px;line-height:1}
+video{width:100%;background:#000;display:block;max-height:78vh}
+#pmsg{padding:8px 14px;font-size:12px;color:#8b949e}
+#pmsg.err{color:#f85149}
+</style>
+</head>
+<body>
+<header>
+  <h1>点赞视频画廊<span>共 __TOTAL__ 条 · 点卡片直接播放</span></h1>
+  <div class="row">
+    <input id="q" type="search" placeholder="搜索标题 / 作者…">
+    <select id="msel"><option value="0">全部月份</option></select>
+    <select id="sort">
+      <option value="o">点赞顺序（最近的在前）</option>
+      <option value="d">发布时间（新的在前）</option>
+      <option value="g">点赞数（高的在前）</option>
+      <option value="s">时长（长的在前）</option>
+    </select>
+    <span id="cnt"></span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<div class="grid" id="grid"></div>
+<button id="more">加载更多</button>
+
+<div id="modal">
+  <div class="player">
+    <div class="phead">
+      <b id="ptitle" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+      <span>
+        <a id="plink" href="#" target="_blank" rel="noreferrer">原页</a>
+        <span class="pclose" id="pclose">×</span>
+      </span>
+    </div>
+    <video id="pv" controls autoplay playsinline></video>
+    <div id="pmsg"></div>
+  </div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const PAGE = 60;
+let view = [], shown = 0, year = 0, month = 0;
+
+const $ = (id) => document.getElementById(id);
+const grid = $('grid'), q = $('q'), msel = $('msel'), sortSel = $('sort'), cnt = $('cnt');
+
+// 年份标签
+const years = {};
+for (const d of DATA) if (d.y) years[d.y] = (years[d.y] || 0) + 1;
+const tabs = $('tabs');
+const mkTab = (label, val, cur) => {
+  const t = document.createElement('div');
+  t.className = 'tab' + (cur === val ? ' on' : '');
+  t.textContent = label;
+  t.onclick = () => { year = val; rebuild(); };
+  return t;
+};
+function buildTabs() {
+  tabs.innerHTML = '';
+  tabs.appendChild(mkTab('全部 ' + DATA.length, 0, year));
+  Object.keys(years).sort((a, b) => b - a).forEach(y => tabs.appendChild(mkTab(y + ' (' + years[y] + ')', Number(y), year)));
+}
+for (let m = 1; m <= 12; m++) {
+  const o = document.createElement('option'); o.value = m; o.textContent = m + ' 月'; msel.appendChild(o);
+}
+
+function fmtDur(s) { if (!s) return ''; return s < 60 ? s + 's' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function esc(s) { return (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function rebuild() {
+  const kw = q.value.trim().toLowerCase();
+  view = DATA.filter(d => (!year || d.y === year) && (!month || d.m === month)
+    && (!kw || d.t.toLowerCase().includes(kw) || d.a.toLowerCase().includes(kw)));
+  const by = sortSel.value;
+  view.sort((a, b) => by === 'o' ? a.o - b.o : by === 'd' ? (a.d < b.d ? 1 : -1) : by === 'g' ? (b.g || 0) - (a.g || 0) : (b.s || 0) - (a.s || 0));
+  grid.innerHTML = ''; shown = 0;
+  addCards(); buildTabs();
+}
+
+function addCards() {
+  const frag = document.createDocumentFragment();
+  for (const d of view.slice(shown, shown + PAGE)) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `
+      <div class="thumb">
+        ${d.img ? '<div class="ph b">图集</div>' : d.c ? `<img loading="lazy" src="${esc(d.c)}" onerror="this.outerHTML='<div class=\'ph b\'>封面已失效<br>点开即可播放</div>'">` : '<div class="ph b">点开即可播放</div>'}
+        ${d.img ? '<span class="badge">图集</span>' : ''}
+        ${d.s ? `<span class="dur">${fmtDur(d.s)}</span>` : ''}
+      </div>
+      <div class="meta">
+        <div class="t">${esc(d.t || '(无标题)')}</div>
+        <div class="s"><b>@${esc(d.a)}</b><span>${d.d}${d.g != null ? ' · ❤' + d.g : ''}</span></div>
+      </div>`;
+    el.onclick = () => play(d, el);
+    frag.appendChild(el);
+  }
+  grid.appendChild(frag);
+  shown += Math.min(PAGE, Math.max(0, view.length - shown));
+  cnt.textContent = shown + ' / ' + view.length + ' 条';
+  $('more').style.display = shown < view.length ? 'block' : 'none';
+}
+
+// ---------- 播放 ----------
+let playing = null;
+const modal = $('modal'), pv = $('pv'), pmsg = $('pmsg'), ptitle = $('ptitle'), plink = $('plink');
+
+async function play(d, el) {
+  playing = d.id;
+  ptitle.textContent = d.t || '(无标题)';
+  plink.href = 'https://www.douyin.com/video/' + d.id;
+  modal.classList.add('on');
+  pv.removeAttribute('src'); pv.load();
+  pmsg.className = ''; pmsg.textContent = '正在向抖音换取播放地址…（首次约 2~5 秒）';
+
+  // 先用本地服务代理播放
+  const src = '/play/' + d.id;
+  const t0 = Date.now();
+  let info = null;
+  try { info = await fetch('/api/url/' + d.id).then(r => r.json()); } catch { info = { ok: false }; }
+  if (playing !== d.id) return;
+  if (!info.ok) {
+    pmsg.className = 'err';
+    pmsg.textContent = '这个视频拿不到播放地址（可能已删除、私密、图集，或登录态失效）。点右上角「原页」去抖音看。';
+    return;
+  }
+  pmsg.textContent = '已就绪（' + ((Date.now() - t0) / 1000).toFixed(1) + 's）';
+  // 顺手把封面回填到卡片上，下次浏览就有图了
+  if (el && info.cover) {
+    const th = el.querySelector('.thumb');
+    if (th && !th.querySelector('img')) {
+      const img = document.createElement('img');
+      img.src = info.cover; img.loading = 'lazy';
+      th.insertBefore(img, th.firstChild);
+      const ph = th.querySelector('.ph'); if (ph) ph.remove();
+    }
+  }
+  pv.src = src;
+  pv.play().catch(() => {});
+  pv.onerror = () => { pmsg.className = 'err'; pmsg.textContent = '播放失败，地址可能已过期，重新点一次卡片。'; };
+}
+
+$('pclose').onclick = () => { modal.classList.remove('on'); pv.pause(); pv.removeAttribute('src'); pv.load(); playing = null; };
+modal.onclick = (e) => { if (e.target === modal) $('pclose').click(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('pclose').click(); });
+
+// ---------- 事件 ----------
+q.addEventListener('input', rebuild);
+msel.addEventListener('change', () => { month = Number(msel.value); rebuild(); });
+sortSel.addEventListener('change', rebuild);
+$('more').onclick = addCards;
+window.addEventListener('scroll', () => {
+  if (shown < view.length && window.innerHeight + scrollY > document.body.offsetHeight - 900) addCards();
+});
+
+rebuild();
+</script>
+</body>
+</html>

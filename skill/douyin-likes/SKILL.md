@@ -84,7 +84,27 @@ python3 scripts/make_by_date.py       # web/by-date.html + exports/by-publish-da
 python3 scripts/report.py             # web/report.html（SVG 图表）
 ```
 
-可选：`node scripts/files_server.mjs 8090` 起个静态服务，支持视频 Range 播放。
+可选服务：
+
+```bash
+node scripts/files_server.mjs 8090     # 静态文件（清单/报告/已下载视频）
+node scripts/gallery_server.mjs 8091   # 画廊：按月筛选 + 点击直接播放
+```
+
+### 画廊（推荐给用户看）
+
+`gallery_server.mjs` 解决了一个关键问题：**抖音的 play_addr 直链带时效**，采集时存下的地址很快就失效，所以不能直接写进 `<video src>`。
+
+做法是**按需实时换取**：页面里的 `<video>` 指向 `/play/<id>`，服务端收到请求才用已登录的浏览器打开该视频页、拿到新鲜地址，再代理转发字节流（支持 Range，可拖进度条）。
+
+```bash
+DOUYIN_ROOT=/path/to/ws node scripts/gallery_server.mjs 8091
+# 打开 http://localhost:8091/
+```
+
+功能：按年份标签 + 月份下拉筛选、搜索、按点赞顺序/发布时间/点赞数/时长排序、点卡片直接播放、播放成功自动回填封面。
+
+代价：首次播放每次约 2~5 秒（要开一次页面），地址缓存 20 分钟。
 
 ### 5. 下载视频（可选）
 
