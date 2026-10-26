@@ -150,3 +150,21 @@ python3 scripts/report.py             # 数据分析报告
 ## License
 
 MIT
+
+---
+
+## 作为 Skill 使用
+
+仓库里的 `skill/douyin-likes/` 是一个可直接安装的 agent skill（DSH / Claude 等支持 skill 的环境）：
+
+```bash
+# 项目内使用（推荐）
+mkdir -p <项目>/.dsh/skills && cp -r skill/douyin-likes <项目>/.dsh/skills/
+
+# 全局使用
+mkdir -p ~/.dsh/skills && cp -r skill/douyin-likes ~/.dsh/skills/
+```
+
+装好后在助手里说「帮我备份抖音点赞」即可自动命中，无需重复描述流程。
+
+`doubao/` 目录是给豆包（或其他不支持执行代码的助手）用的纯提示词版本：`智能体设定.md` 粘进系统提示，`知识库-常见问题.md` 作为知识库上传。
