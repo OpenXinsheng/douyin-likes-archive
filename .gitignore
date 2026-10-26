@@ -1,0 +1,25 @@
+# 依赖与二进制
+node_modules/
+browsers/
+vendor/
+.npmcache/
+*.deb
+
+# 登录态与个人数据（绝对不要提交）
+profile/
+profile-state.json
+.chome/
+.scratch/
+videos/
+exports/
+logs/
+qr-*.png
+
+# 产物
+web/report.png
+web/by-date.png
+*.zip
+
+# 系统
+.DS_Store
+Thumbs.db

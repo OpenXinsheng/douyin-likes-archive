@@ -1,0 +1,20 @@
+{
+  "name": "douyin-likes-archive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "抖音「我点赞的视频」全量归档：采集 / 下载 / 分析",
+  "type": "module",
+  "scripts": {
+    "login": "node scripts/login_live3.mjs 60",
+    "collect": "node scripts/collect_all.mjs 3000 2500",
+    "collect:quick": "node scripts/collect_all.mjs 20 3000",
+    "download": "node scripts/download_likes.mjs 20",
+    "report": "python3 scripts/report.py && python3 scripts/make_links_page.py && python3 scripts/make_by_date.py",
+    "serve": "node scripts/files_server.mjs 8090"
+  },
+  "dependencies": {
+    "playwright": "^1.64.0",
+    "ws": "^8.18.0"
+  },
+  "engines": { "node": ">=20" }
+}
